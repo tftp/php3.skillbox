@@ -1,0 +1,14 @@
+#!/usr/bin/env php
+
+<?php
+// application.php
+
+require_once __DIR__.'/vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+
+$app = new Application();
+
+// ... register commands
+$app->add(new \App\ChangeRegister());
+$app->run();

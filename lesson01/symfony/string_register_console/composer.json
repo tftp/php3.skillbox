@@ -1,0 +1,17 @@
+{
+    "name": "tftp/string_register_console",
+    "authors": [
+        {
+            "name": "OS",
+            "email": "goloborodko@inbox.ru"
+        }
+    ],
+    "require": {
+        "symfony/console": "^5.2"
+    },
+    "autoload": {
+        "psr-4": {
+          "App\\": "src/"
+        }
+    }
+}
