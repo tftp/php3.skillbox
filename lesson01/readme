@@ -1,0 +1,113 @@
+Установка nginx
+
+Документация на nginx.org
+
+	sudo apt install nginx
+
+	more /etc/nginx/nginx.conf #просмотр конфига nginx
+
+в папке /etc/nginx/sites-available/default находится конфигурация для сайта
+
+Установка php
+
+Установку php можно взять с https://computingforgeeks.com/how-to-install-php-on-ubuntu/
+
+Step 1: Add PHP PPA Repository
+	sudo apt-get update
+	sudo apt -y install software-properties-common
+	sudo add-apt-repository ppa:ondrej/php
+	sudo apt-get update
+
+Step 2: Install PHP 7.4 on Ubuntu 18.04/19.04/16.04
+	sudo apt -y install php7.4
+
+Using PHP 7.4 with Nginx on Ubuntu you need to stop and disable Apache service
+	sudo systemctl disable --now apache2
+
+Модули для установки с php: php7.4-cgi, php7.4-gd, php7.4-xml, php7.4-curl, php7.4-mbstring, php7.4-fpm
+
+Конфигурация PHP
+путь /etc/php/7.4/
+важна папка cli и fpm/pool.d/www.conf
+просмотрим конфиг с помощью less
+	less /etc/php/7.4/fpm/pool.d/www.conf
+
+Установка MySQL
+	sudo apt install mysql-server mysql-client
+
+Настройка mysql:
+sudo mysql #попадаем в mysql
+пример создания БД
+> create database learn character set utf8;
+пример создания пользователя
+> CREATE USER 'student'@'%' IDENTIFIED BY 'student';
+пример задания прав доступа
+> GRANT ALL PRIVILEGES ON learn.* TO 'student'@'%' WITH GRANT OPTION;
+чтоб изменения вступили в силу выполняем команду
+>FLUSH PRIVILEGES;
+
+пример подключения под studentom
+	mysql -u student -pstudent
+
+
+Установка Composer
+ссылка https://getcomposer.org/download/
+
+после установки, чтоб composer выполнялся глобально, вводим команду
+	sudo mv composer.phar /usr/local/bin/composer
+
+инициализация composer в папке проекта: composer init
+
+пример добавления пакета с помощью composer: composer require symfony/console
+
+Установка Laravel
+сайт с документацией https://laravel.com/docs/8.x
+
+вначале необходимось скорректировать права пользователя для проектов под laravel
+	sudo chown www-data:www-data /var/www -R
+	sudo chmod 775 /var/www -R
+
+добавление нашего пользователя skillbox в эту группу
+	sudo usermod -a -G www-data skillbox
+
+далее перелогинимся
+
+Установка с помощью композера
+	composer create-project laravel/laravel example-app
+
+добавим пакет
+	sudo apt install php-zip
+
+проверяем что наш проект имеет нужных пользователей, меняем если нет
+	sudo chown www-data:www-data example-app -R
+
+далее редактируем конфиг php7.4-fpm:
+	/etc/php/7.4/fpm/pool.d/www.conf
+
+обращаем внимание на строку с подключением сокета (тоже будет в
+	конфиге у nginx)
+	listen = /run/php/php7.4-fpm.sock
+
+перезапускаем сервер php7.4-fpm
+	sudo service php7.4-fpm restart
+если выдает ошибку и ругается на несуществующую директорию лога, создаем её
+	sudo mkdir /var/log/php
+
+далее редактируем конфиг nginx:
+	/etc/nginx/sites-available/default
+обращаем внимание на сокет и нашу дерикторию проекта
+	fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+	root /var/www/example-app/public;
+перезапускаем nginx
+	sudo service nginx restart
+
+редактируем hosts для нашего доменного имени
+
+Редактируем конфиг нашего проекта
+	/example-app/.env
+редактируем:
+	APP_URL=http://skillbox.laravel
+	DB_DATABASE=learn
+	DB_USRNAME=student
+	DB_PASSWORD=student
+
