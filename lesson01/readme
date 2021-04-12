@@ -24,7 +24,7 @@ Step 2: Install PHP 7.4 on Ubuntu 18.04/19.04/16.04
 Using PHP 7.4 with Nginx on Ubuntu you need to stop and disable Apache service
 	sudo systemctl disable --now apache2
 
-Модули для установки с php: php7.4-cgi, php7.4-gd, php7.4-xml, php7.4-curl, php7.4-mbstring, php7.4-fpm
+Модули для установки с php: php7.4-cgi, php7.4-gd, php7.4-xml, php7.4-curl, php7.4-mbstring, php7.4-fpm, php7.4-mysql
 
 Конфигурация PHP
 путь /etc/php/7.4/

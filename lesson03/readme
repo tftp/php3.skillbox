@@ -1,0 +1,186 @@
+Миграция 
+	php artisan migrate
+	//по умолчанию создает таблицы users и password_reset
+
+	php artisan make:migration --help
+	//помощь по миграциям
+
+	если правильно выбрать при создании имя миграции то команда сама сделает нужное действие
+	php artisan make:migration create_tasks_table
+
+	чтобы созданные миграции вступили в силу запускаем команду
+	php artisan migrate
+
+	откатим и накатим все миграции 
+	php artisan migrate:refresh
+
+
+
+
+Передача данных - 3 разных варианта:
+	return view('welcom', ['name' => $name]);
+	return view('welcom')->with('name' => $name);
+	return view('welcom', compact('name'));
+
+Синтаксис Blade
+	@foreach($tasks as $task)
+	@endforeach
+
+	@if ()
+	@endif
+
+	@while ()
+	@endwhile
+
+	Работа с шаблонами.
+		Создаем шаблон layout.blade.php в котором есть шаблон html5, в теге body добавим
+			<body>
+				@yield('content')
+			</body>
+
+		 теперь в другом шаблоне welcome сошлемся на шаблон layout
+			@extends('layout')
+			@section('content')
+				Какой то текст
+			@endsection
+
+		если вынести часть кода в другой файл, например layout.nav (в директории layout файл nav.blade.php)
+		то можно этот файл подключить командой
+			@include('layout.nav')
+
+		Итого общий вид шаблона layout.blade.php будет
+			<body>
+				@include('layout.nav')
+				@yield('content')
+				@include('layout.footer')
+			</body>
+
+	Работа с формами:
+		При работе с формами нужно добавить сигнатуру @csrf
+		Подробности https://laravel.com/docs/8.x/csrf
+
+	Работа с временем
+		{{ $task->create_at->format('d.m.Y h:i:s') }}
+	или
+		{{ $task->create_at->toFormattedDateString() }}
+		
+Пример обращения к базе данных
+	$tasks = DB::table('tasks')->get(); // в переменной будет хранится НЕ массив а коллекция
+	
+	чтоб её вывести можно использовать команду для дебага
+	dd($tasks);
+
+Eloquent DB встроена в Laravel
+	Создание модели
+		php artisan make:model Task
+		после этого у Task появляется множество методов в том числе и взаимодейстия с БД
+
+	Для удобства работы с командами можно запустить специальное консольное приложение laravel
+	php artisan tinker
+
+	После создания модели к ней можно обращаться как к объекту БД
+		App\Task::all();
+		App\Task::where('id', '>', 2)->get();
+		App\Task::get(['body']);
+
+		$task = new App\Task;
+		$task->body = 'Тело задания';
+		$task->save();
+	и т.д.
+
+	Можно использовать метод pluck, который вместо объектов возвращает строки
+		App\Task::pluck('body');
+
+	Чтобы создать модель с миграцией:
+		php artisan make:model Task -m
+
+	Задание значения по умолчанию в миграции
+		$table->boolean('completed')->default(false);
+
+	Скоупы:
+		добавляем в Модели
+		1 способо добавление статичной функции:
+			public static function incompleted()
+			{
+				return static::where('completed', 0)->get();
+			}
+
+		2 способ создать скоуп:
+			public function scopeIncompleted($query)   //поскольку это скоуп то принимает параметр QueryBuilder(автоматически)
+			{
+				return $query->where('completed', 0); //возвращает Query Builder
+			}
+
+			когда применяем скоуп то используем App\Task::incompleted()->get();
+
+			Можно передать любую переменную в скоуп App\Task::incompleted($var)
+			для этого добавляем в public function scopeIncompleted($query, $var)
+
+Контроллеры.
+	php artisan make:controller TasksController
+
+	привязка моделей к контроллерам
+	Если мы напишем в контроллере метод show, который по id выводит задание:
+		public function show($id)
+		{
+			$task = App\Task::find($id);
+			return $task;
+		}
+
+	можно написать по другому с приязкой к модели
+		public function show(Task $task)
+		{
+			return $task;
+		}
+	но чтобы всё работало нужно чтоб имя параметра в маршруте совпадало с именем переменной
+		Route::get('/tasks/{task}', 'TasksController@show');
+
+	Можно переопределить поведение поиска элемента (которое происходит в контроллере):
+		добавить функцию в модели
+		public function getRouteKeyName()
+		{
+			return 'id'; //указываем какое поле БД надо вернуть
+		}
+
+	При обработке данных форм есть метод request:
+		request()->get('title'); или
+		request('title');
+
+	Редирект командой
+		return redirect('/tasks');
+
+	Создание нового объекта
+		Можно создавать так:
+			Task::create([
+				'title' => request('title'),
+				'body' => request('body')
+			]);
+		но для этого в модели надо задать список полей. которые разрешены для массового заполнения:
+			public $fillable = ['title', 'body'];
+			или
+			public $guarded = []; //здесь указываем поля, которые НЕ разрешены для массового заполнения
+		или это свойство вынести в новый класс Model(который наследует старый Model), который наследуют все модели.
+		И тогда верхний запрос на сохранение можно упростить ещё сильнее:
+			Task:create(request()->all());
+
+Валидация в контроллере
+	$this->validate(request(), [
+		'title' => 'required | max: 40 | min: 10',
+		'boxdy' => 'required',
+	]);
+	Подробнее на https://laravel.com/docs/8.x/validation#introduction
+
+	
+Маршруты
+	Дополнение по маршрутам
+		GET /tasks				//все задание вывод, index
+		GET /tasks/create		//форма создания нового, create
+		POST /tasks				//создание нового в контроллере, метод store
+
+		GET /tasks/{id}			//вывод конкретного задания, show
+		GET /tasks/{id}/edit	//форма редактирования конкретного задания, edit
+
+		PATCH /tasks/{id}		//изменение конкретного задания в контроллере, update
+		DELETE /tasks/{id}		//удаление конкретного задания в контроллере, destroy
+
+
