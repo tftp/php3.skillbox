@@ -111,3 +111,16 @@ sudo mysql #попадаем в mysql
 	DB_USRNAME=student
 	DB_PASSWORD=student
 
+Создание консольного приложения
+	1. создаем директория проекта
+	2. в директории инициализируем проект: composer init
+	3. устанавливаем компонент: composer require symfony/console
+	4. создаем директорию src с исходным кодом проекта
+	5. добавляем в composer.json настройку автоподгрузки
+	6. перезапускаем конфигурацию командой composer dump-autoload
+	7. в корне проекта создаем файл app это файл запуска проекта
+	8. прописываем в app примерно следующее https://symfony.com/doc/current/components/console.html
+	9. для создания первой команды в директории src создаем файл например WhatTimeCommand.php
+	10. в нем соответствующий класс, подробности https://github.com/tftp/php3.skillbox/tree/main/lesson01/symfony/string_register_console
+
+
