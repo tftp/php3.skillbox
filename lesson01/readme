@@ -123,4 +123,6 @@ sudo mysql #попадаем в mysql
 	9. для создания первой команды в директории src создаем файл например WhatTimeCommand.php
 	10. в нем соответствующий класс, подробности https://github.com/tftp/php3.skillbox/tree/main/lesson01/symfony/string_register_console
 
+	подсказка по вводу данных через консоль https://symfony.com/doc/current/console/style.html
+
 
