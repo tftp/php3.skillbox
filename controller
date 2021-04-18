@@ -1,0 +1,60 @@
+Контроллеры.
+	php artisan make:controller TasksController
+
+	привязка моделей к контроллерам
+	Если мы напишем в контроллере метод show, который по id выводит задание:
+		public function show($id)
+		{
+			$task = App\Task::find($id);
+			return $task;
+		}
+
+	можно написать по другому с приязкой к модели
+		public function show(Task $task)
+		{
+			return $task;
+		}
+	но чтобы всё работало нужно чтоб имя параметра в маршруте совпадало с именем переменной
+		Route::get('/tasks/{task}', 'TasksController@show');
+
+	Можно переопределить поведение поиска элемента (которое происходит в контроллере):
+		добавить функцию в модели
+		public function getRouteKeyName()
+		{
+			return 'id'; //указываем какое поле БД надо вернуть
+		}
+
+	При обработке данных форм есть метод request:
+		request()->get('title'); или
+		request('title');
+
+	Редирект командой
+		return redirect('/tasks');
+
+	Создание нового объекта
+		Можно создавать так:
+			Task::create([
+				'title' => request('title'),
+				'body' => request('body')
+			]);
+		но для этого в модели надо задать список полей. которые разрешены для массового заполнения:
+			public $fillable = ['title', 'body'];
+			или
+			public $guarded = []; //здесь указываем поля, которые НЕ разрешены для массового заполнения
+		или это свойство вынести в новый класс Model(который наследует старый Model), который наследуют все модели.
+		И тогда верхний запрос на сохранение можно упростить ещё сильнее:
+			Task:create(request()->all());
+
+Валидация в контроллере
+	$this->validate(request(), [
+		'title' => 'required | max: 40 | min: 10',
+		'boxdy' => 'required',
+	]);
+	Подробнее на https://laravel.com/docs/8.x/validation#introduction
+
+
+Передача данных - 3 разных варианта:
+	return view('welcom', ['name' => $name]);
+	return view('welcom')->with('name' => $name);
+	return view('welcom', compact('name'));
+

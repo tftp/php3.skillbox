@@ -1,0 +1,17 @@
+Миграция 
+	php artisan migrate
+	//по умолчанию создает таблицы users и password_reset
+
+	php artisan make:migration --help
+	//помощь по миграциям
+
+	если правильно выбрать при создании имя миграции то команда сама сделает нужное действие
+	php artisan make:migration create_tasks_table
+
+	чтобы созданные миграции вступили в силу запускаем команду
+	php artisan migrate
+
+	откатим и накатим все миграции 
+	php artisan migrate:refresh
+
+

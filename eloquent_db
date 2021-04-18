@@ -1,0 +1,52 @@
+Пример обращения к базе данных
+	$tasks = DB::table('tasks')->get(); // в переменной будет хранится НЕ массив а коллекция
+	
+	чтоб её вывести можно использовать команду для дебага
+	dd($tasks);
+
+Eloquent DB встроена в Laravel
+	Создание модели
+		php artisan make:model Task
+		после этого у Task появляется множество методов в том числе и взаимодейстия с БД
+
+	Для удобства работы с командами можно запустить специальное консольное приложение laravel
+	php artisan tinker
+
+	После создания модели к ней можно обращаться как к объекту БД
+		App\Task::all();
+		App\Task::where('id', '>', 2)->get();
+		App\Task::get(['body']);
+
+		$task = new App\Task;
+		$task->body = 'Тело задания';
+		$task->save();
+	и т.д.
+
+	Можно использовать метод pluck, который вместо объектов возвращает строки
+		App\Task::pluck('body');
+
+	Чтобы создать модель с миграцией:
+		php artisan make:model Task -m
+
+	Задание значения по умолчанию в миграции
+		$table->boolean('completed')->default(false);
+
+	Скоупы:
+		добавляем в Модели
+		1 способо добавление статичной функции:
+			public static function incompleted()
+			{
+				return static::where('completed', 0)->get();
+			}
+
+		2 способ создать скоуп:
+			public function scopeIncompleted($query)   //поскольку это скоуп то принимает параметр QueryBuilder(автоматически)
+			{
+				return $query->where('completed', 0); //возвращает Query Builder
+			}
+
+			когда применяем скоуп то используем App\Task::incompleted()->get();
+
+			Можно передать любую переменную в скоуп App\Task::incompleted($var)
+			для этого добавляем в public function scopeIncompleted($query, $var)
+

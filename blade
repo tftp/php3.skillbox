@@ -1,0 +1,43 @@
+Синтаксис Blade
+	@foreach($tasks as $task)
+	@endforeach
+
+	@if ()
+	@endif
+
+	@while ()
+	@endwhile
+
+	Работа с шаблонами.
+		Создаем шаблон layout.blade.php в котором есть шаблон html5, в теге body добавим
+			<body>
+				@yield('content')
+			</body>
+
+		 теперь в другом шаблоне welcome сошлемся на шаблон layout
+			@extends('layout')
+			@section('content')
+				Какой то текст
+			@endsection
+
+		если вынести часть кода в другой файл, например layout.nav (в директории layout файл nav.blade.php)
+		то можно этот файл подключить командой
+			@include('layout.nav')
+
+		Итого общий вид шаблона layout.blade.php будет
+			<body>
+				@include('layout.nav')
+				@yield('content')
+				@include('layout.footer')
+			</body>
+
+	Работа с формами:
+		При работе с формами нужно добавить сигнатуру @csrf
+		Подробности https://laravel.com/docs/8.x/csrf
+
+	Работа с временем
+		{{ $task->create_at->format('d.m.Y h:i:s') }}
+	или
+		{{ $task->create_at->toFormattedDateString() }}
+		
+
