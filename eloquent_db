@@ -50,3 +50,12 @@ Eloquent DB встроена в Laravel
 			Можно передать любую переменную в скоуп App\Task::incompleted($var)
 			для этого добавляем в public function scopeIncompleted($query, $var)
 
+Миграция для создания таблицы tag_task для связи многие ко многим:
+	Командой php artisan make:migration create_tag_task_table создаем миграцию в которой прописываем:
+		$table->unsignedInteger('task_id');
+		$table->unsignedInteger('tag_id');
+		$table->primary(['task_id', 'tag_id']);
+		$table->foreign('task_id')->references('id')->on('task')->onDelete('cascade'); //для связи с моделями task и tag и каскадного удаления
+		$table->foreign('tag_id')->references('id')->on('tag')->onDelete('cascade'); //
+
+

@@ -14,4 +14,13 @@
 	откатим и накатим все миграции 
 	php artisan migrate:refresh
 
+Route
+
+	php artisan route:list
+
+Controller
+
+	php artisan make:controller -r 	PostsController //создает контроллер со всеми  методами ресурса
+	php artisan make:controller -r PostsController -m Post //создает и модель сразу
+
 

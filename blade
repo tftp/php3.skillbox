@@ -41,3 +41,35 @@
 		{{ $task->create_at->toFormattedDateString() }}
 		
 
+	Указание метода отправки данных в форме:
+		в форме указываем 
+			<form method='post'>
+				@csrf
+				@method('PATCH') // указание какой метод использует форма
+			</form>
+
+	Для сохранения старых данных в форме:
+		<input type='text' value="{{ old('title', $task->title) }}">
+
+	Вывод объектов tag при связи многие ко многим, вынесем в отдельный шаблон:
+		@php
+			$tags = $tags ?? collect();  // такая конструкция для защиты передачи данных как коллекции
+		@endphp
+
+		@if($tags->isNotEmpty())
+			<div>
+				@foreach($tags as $tag)
+					<a href='#' class='badge badge-secondary'>{{ $tag->name }}</a>
+				@endforeach
+			</div>
+		@endif
+
+		Когда мы будем подключать этот файл то:
+			@include('tasks.tags', ['tags' => $task->tags]);
+
+
+	Особености параметра value тега input при заполнении тегов:
+		value="{{ old('tags', $task->tags->pluck('name')->implode(',')) }}" // здесь используется функция imlode действующая как разделитель массива в строку
+
+
+

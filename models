@@ -1,0 +1,79 @@
+Скоупы:
+		добавляем в Модели
+		1 способо добавление статичной функции:
+			public static function incompleted()
+			{
+				return static::where('completed', 0)->get();
+			}
+
+		2 способ создать скоуп:
+			public function scopeIncompleted($query)   //поскольку это скоуп то принимает параметр QueryBuilder(автоматически)
+			{
+				return $query->where('completed', 0); //возвращает Query Builder
+			}
+
+			когда применяем скоуп то используем App\Task::incompleted()->get();
+
+			Можно передать любую переменную в скоуп App\Task::incompleted($var)
+			для этого добавляем в public function scopeIncompleted($query, $var)
+
+
+Можно переопределить поведение поиска элемента (которое происходит в контроллере):
+		добавить функцию в модели
+		public function getRouteKeyName()
+		{
+			return 'id'; //указываем какое поле БД надо вернуть
+		}
+
+
+Задание списка полей. которые разрешены для массового заполнения:
+			public $fillable = ['title', 'body'];
+			или
+			public $guarded = []; //здесь указываем поля, которые НЕ разрешены для массового заполнения
+		или это свойство вынести в новый класс Model(который наследует старый Model), который наследуют все модели.
+
+Связи, подробно https://laravel.com/docs/8.x/eloquent-relationships
+	Если есть модель Step то можно создать метод steps, который реализует связь один ко многим:
+	public function steps()
+	{
+		return $this->hasMany(Step::class);
+	}
+
+	если использовать $task->steps(), мы получим объект QueryBuilder к которому можно обращаться и в дальнейшем:
+		$task->steps->where('')->get() и т.д.
+
+	Связь обратная от связи один ко многим:
+	public function task()
+	{
+		return $this->belongsTo(Task::class);
+	}
+
+При создании Step объекта можно создать метод в модели Task:
+	public function addStep($attributes)
+	{
+		return $this->steps()->create($attributes);
+	}
+	в данном случае значение поля tasks_id заполняется автоматически
+
+	И в контроллере использование метода addStep:
+		public function store()
+		{
+			$task->addStep(request()->validate([
+				'description' => 'required'
+			]));
+			return back();
+		}
+
+Связь многие ко многим:
+	public function tags()
+	{
+		return $this->belongsToMany(Tag::class);
+	}
+
+Вынесенный в модель метод tagsCloud():
+	public static function tagsCloud()
+	{
+		return (new static)->has('tasks')->get();
+	}
+
+

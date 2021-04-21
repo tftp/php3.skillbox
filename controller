@@ -53,8 +53,78 @@
 	Подробнее на https://laravel.com/docs/8.x/validation#introduction
 
 
+	Можно использовать такой вариант валидации, в котором возвращается массив данных:
+	$atributes = $request()->validate([
+		'title' => 	'required',
+		'body' => 'required',
+	]);
+	И далее использовать их для обновления:
+	$task->update($attributes);
+
+Пример использования динамического метода:
+	public function update(Step $step)
+	{
+		$method = request()->has('completed') ? 'complete' : 'incomplete';
+		$step->{$method}();
+
+		return back();
+	}
+	// здесь 'complete' и 'incomlete' - методы реализованые в модели Step
+
+
+
+
 Передача данных - 3 разных варианта:
 	return view('welcom', ['name' => $name]);
 	return view('welcom')->with('name' => $name);
 	return view('welcom', compact('name'));
+
+При связи многие ко многим и обращении объекта Task к tag связям, делается лишний запрос к БД,
+чтобы этого избежать объекты Task можно вызвать сразу с tag:
+		$tasks = Task::with('tags')->latest()->get();
+
+Пример работы с данными:
+	$taskTags = $task->tags->keyBy('name');
+	
+	$tags = collect(explode(',', request('tags')))->keyBy(function ($item) {return $item; });
+	
+	$tagsToAttach = $tags->diffKeys($taskTags);
+	$tagsToDetach = $taskTags->diffKey($tags);
+
+	forech ($tagsToAttach as $tag) {
+		$tag = Tag::firstOrCreate(['name' => $tag]);
+		$task->tags()->attach($tag); // метод добавления объекта связи													
+	}
+
+	foreach ($tagsToDetach as $tag) {
+		$task->tags->detach($tag); // метод удаления объекта  из связи, есть ещё метод synс() который принимает id всех объектов и те, которые указаны добавляет, а которые не указаны удаляет.
+	}
+
+Этот код можно заменить на следующий идентичный:
+	
+	$taskTags = $task->tags->keyBy('name');
+	
+	$tags = collect(explode(',', request('tags')))->keyBy(function ($item) {return $item; });
+	
+	$syncIds = $taskTags->intersectByKeys($tags)->pluck('id')->toArray();
+
+	$tagsToAttach = $tags->diffKeys($taskTags);
+
+	forech ($tagsToAttach as $tag) {
+		$tag = Tag::firstOrCreate(['name' => $tag]);
+
+		$syncIds[] = $tag->id;
+	}
+
+	$task->tags()->sync($syncIds);
+
+Если мы хотим использовать переменную, которая должна быть на всех страницах (например в боковом меню), нужно использовать сервис-провайдеры.
+	Открываем Providers/AppServiceProvider, здесь есть два метода boot и register.
+	Используем загрузку нашей переменной в методе boot:
+	добавим команду:
+		view()->composer('layout.sidebar', function ($view) {  // в кчестве шаблона можно указать * , для использования всех шаблонов. 
+			$view->with('tagsCloud', \App\Tag::has('tasks')->get()); // вот так передаем переменную $tagsCloud  во все шаблоны нашего сайта
+			// has('tasks') означает, что будут выбраны те тэги  для которых есть хотябы одна привязаная задача, можно вынести в модель
+			// или $view->with('tagsCloud', \App\Tag::tagsCloud());
+		});
 
