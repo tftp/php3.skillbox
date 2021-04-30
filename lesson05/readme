@@ -1,0 +1,74 @@
+Базовые концепции
+
+	Сервис контейнеры
+		сам класс Application  и есть сервис-контейнер. К нему обращаемся через app() или resolve().
+		В качестве парраметра - объект который мы хотим получить:
+			app(App\Task::class);
+		Как разместить в этот сервис контейнер.
+			app()->bind('example', function () {   //метод bind, парраметры название объекта и колбэк функция (вместо него можно использовать метод singleton
+				return new App\Example;		//создание экземпляра класса Example мы привязали к ключу 'example'
+			});
+
+		если используем app('example'); app('example'); то создадим два разных объекта
+		чтобы объект был типа singleton нужно при размещении в контейнер использовать метод не bind, а singleton
+		
+		необязательно привязывать объекты, можно получить новый класс написав:
+			app(App\Example::class);
+
+		если при размещении в сервис-контейнер мы напишем не 'example', а App\Example::class, то при обращении app(App\Example::class) выполнится колбэк
+		функция, которую мы описали при размещении. Потому что ларавел сначала смотрит ключ в сервис контейнере и если его нет ищет объект с указаным именем.
+		
+		Примеры:
+
+		app()->singleton(App\Service\Pushall::class, function() {
+			return new App\Service\Pushall('private-key');
+		});
+
+		Route::get('/test', function (App\service\Pushall $pushall) {
+			dd($pushall);
+		});
+
+		Если у нас есть интерфейс и классы от него зависящие
+			interface PriceFormater { public class format;}
+			class SimpleFormater implement PriceFormater
+			class OtherFormater implement PriceFormater
+
+			они по разному реализуют метод format
+
+			зарегистрируем объект для контейнера:
+				app()->bind(App\SimpleFormater::class, function () {
+					return new App\SimpleFormaner();
+				});
+
+				Route::get('/test', function (App\SimpleFormater $formater) {
+					dd($formater->format());
+				});
+
+			Но можно зарегистрировать зависимость на интерфейс, код изменится:
+				app()->bind(App\PriceFormater::class, function () {
+					return new App\SimpleFormaner(); // а здесь указываем конкретную реализацию, и её то можно оперативно менять на return new App\OtherFormater()
+				});
+
+				Route::get('/test', function (App\PriceFormater $formater) {
+					dd($formater->format());
+				});
+
+
+
+	Автоматическое разрешение зависимостей
+		Когда мы пытаемся подключить тот или иной объект в ларавел, он пытается самостоятельно определить что нам нужно и ищет это что то внутри сервис-контейнера.
+
+
+
+	Сервис провайдеры
+
+
+	Кофигурирование
+
+
+
+
+	Midleware
+
+
+
