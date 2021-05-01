@@ -60,15 +60,100 @@
 
 
 
-	Сервис провайдеры
+	Сервис провайдеры - это блоки, с помощью которых компоненты регистрируют и выполняют свой код. 
+
+		Стандартные провайдеры находятся в папке Providers, они зарегистрированны в конфигурации для выполнения, если мы создаем свой провайдер то
+		его тоже нужно зарегистрировать config\app.php в ключе 'providers'
+
+		Сервис провайдер содержит методы register - для регистрации объектов в сервис-контейнере, вызывается при каждой загрузке фреймворка, например
+			$this->app->singelton(\App\Service\Pushall::class, function() {
+				return new \App\Service\Pushall('private-key');
+			});
+			и в web.php проверим маршрутом 
+				Router::get('/test', function(App\Service\Pushall $pushall) {
+					dd($pushall);
+				});
+
+		Метод boot выполняет любой код.
+
+		Создание отдельных сервис-провайдеров.
+			php artisan make:provider PushallServiceProvider
+
+			и в нем размещаем нужный нам код. незабываем зарегистрировать наш сервис-провайдер в configs\app.php
+
+		Можно упаковывать свои компоненты в отдельные библиотеки и подключать их с помощью композера, используя провайдеры для регистрации и загрузки.
 
 
-	Кофигурирование
+	Кофигурирование, Файлы конфигурации и Переменные окружения
+		все вайлы конфигурации в папке config
+		каждая конфигурация - ассоциативный массив
+		функция env() достает данные из суперглобальной переменной $_ENV, куда попадают данные из .env из корня проекта
+
+		Так как файл .env исклчена из контроля версий то каждая копия проекта должна содержать свой код .env
+
+		Для использования данных из файла конфигурации:
+			<title>{{ congig('ключ', 'значение по умолчанию') }}</title>
+			ключ из файла app.php будет app.name
+
+		Пример, добавим ключ в services.php:
+			'pushall' => [
+					'key' => 'some-private-key',
+				],
+		
+		и в сервис провайдере поправим код:
+			$this->app->singelton(\App\Service\Pushall::class, function() {
+				return new \App\Service\Pushall('services.pushall.key');
+			});
+
+		Хранить ключ в services.php небезопасно поэтому перенесем его в переменную окружения:
+			'pushall' => [
+					'key' => env('PUSHALL_PRIVATE_KEY'),
+				],
+			
+			а в .env допишем PUSHALL_PRIVATE_KEY='some-private-key'
+
+		Можно создать свой файл конфигураций в директории config.
+
+		Чтобы файлы загружались не по отдельности, а одним большим файлом (в боевом проекте) используем команду
+		
+			php artisan config:cache // создает кэш конфигурации и ускоряет загрузку
+			php artisan config:clear // удаляет кэш конфигурации
 
 
+	Midleware - слои приложения (делает некоторые действия или осуществляет фильтрацию http запроса)
 
+		Слои находятся в папке middleware
+		Файл Kernel.php - ядро запуска слоев. В нем есть следующие переменные запуска:
 
-	Midleware
+			$middleware - загружаются при каждом запуске приложения
 
+			$middlewareGroups - загрузка по группам
+			
+			$routeMiddleware - именованные middleware, имена можно использовать для подключения например в роутинге
 
+		Создание слоя:
+			php artisan make:middleware CustomAuthenticate
+
+			чтобы наш middleware выполнился на сайте нужно его зарегистрировать в Kernel.php
+
+			пропишем логику в нашем middleware в методе handle. например:
+
+				if (! $request->has('auth') && $request->getRequestUri() !== '/') {
+					return redirect('/');
+				}
+
+			Способы привязки middleware к маршруту:
+
+				Route::get('/test','TestController@index')->middleware('имя middleware заданное в $routeMiddleware'), или
+				Route::get('/test','TestController@index')->middleware(\App\Http\Middleware\CustomAuthenticate::class)
+
+				ещё способ - указать middleware в конструкторе контроллера:
+
+					TestController:
+						public function __construct() {
+							$this->middleware('test'); // действует на все методы контроллера
+						}																																																																																																																																										
+
+							$this->middleware('test', ['only' => ['show']]); // действует только на метод show
+							$this->middleware('test', ['except' => ['show']]); // действует кроме метода show
 
