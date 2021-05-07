@@ -52,6 +52,13 @@
 				Route::get('/test', function (App\PriceFormater $formater) {
 					dd($formater->format());
 				});
+		
+		Использование сервис-контейнеров в классе через конструктор:
+			    public function __construct(UserRepository $users)
+				    {
+ 				       $this->users = $users;
+    				}
+		подробности https://laravel.com/docs/8.x/container#introduction 
 
 
 
