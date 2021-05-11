@@ -164,3 +164,99 @@
 							$this->middleware('test', ['only' => ['show']]); // действует только на метод show
 							$this->middleware('test', ['except' => ['show']]); // действует кроме метода show
 
+Авторизация. Политики.
+
+	Метод, продемонстрированный в уроках, актуален только для Laravel 5, для версий 6+ выберите следующий вариант:
+		для простого создания авторизации как в уроке вы можете использовать пакет (рекомендуется): laravel/ui; 
+		также вы можете использовать пакет для реализации авторизации: laravel/fortify;
+		или его реализацию вместе с ui: zacksmash/fortify-ui.
+
+	авторизация устанавливается установкой https://github.com/laravel/ui
+
+	в конструктор контроллера обычно добавляется строка на мидлваре, которая обеспечивает авторизацию
+		$this->middleware('auth')
+	
+	много интересного про авторизацию можно найти здесь https://laravel.com/docs/8.x/authorization
+
+	появились методы:
+		auth()->id() // возвращает id авторизованного пользователя
+		auth()->user()// возвращает пользователя
+		auth()->check()// проверяет авторизован ли пользователь
+		auth()->guest()//возвращает true если гость
+
+	варианты ограничения доступа к редактированию задания без Политики:
+
+		if ($task->owner_id !== auth()->id()) {
+			abort(403);
+		}
+
+		-----------------------------------------
+
+		abort_if($task->owner_id !== auth()->id(), 403);
+
+	Политика. Policy.
+
+		Создание политики с разной логикой к модели иконтроллеру Task: php artisan make:policy TaskPolicy --model=Task
+
+		В методе update TaskPolicy реализуется логика выполнения обновления:
+
+			return $this->id == $task->user_id;
+
+		Далее нужно зарегистрировать политику в AuthServiceProvider:
+
+			protected $policies = [
+		        App\Models\Article::class => App\Policies\ArticlePolicy::class,
+		    ];
+			
+		Далее можно использовать политику в разных вариантах при ограничении доступа к редактированию с Политикой:
+
+			$this->authorize('update', $task);
+
+		--------------------------------------
+
+			использование Gate
+		
+			abort_if(\Gate::denies('update', $task), 403);
+
+			или
+
+			abort_unless(\Gate::allows('update', $task), 403);
+			
+		--------------------------------------
+
+			abort_if(auth()->user()->cannot('update', $task), 403);
+
+
+		--------------------------------------
+
+			использование middleware. в конструкторе контроллера добавляем
+
+				$this->middleware('can:update,article')->only(['edit', 'update']);
+
+	И в шаблоне можно использовать директиву can которая ссылается на политику:
+
+            @can('update', $article)
+                <a href='{{route('articles.edit', ['article' => $article->code])}}' class='badge badge-secondary'>Изменить</a>
+            @endcan
+
+	Чтобы обойти политику например для Администратора можно в метод boot AuthServiceProvider добавить
+
+		    public function boot(\Illuminate\Contracts\Auth\Access\Gate $gate)
+ 		   {
+		        $this->registerPolicies();
+
+		        $gate->before(function ($user) {
+		            if ($user->isAdmin()) {
+		                return true;
+		            }
+		        });
+		    }
+
+	в этом случае команда $gate->before выполняется прежде любой политики и игнорирует политику если условие истино и запрещает доступ если false.
+
+
+	Для отображения только задач текущего пользователя в методе index напишем:
+
+		$tasks = auth()->user()->tasks()->with('tags')->latest()->get();
+
+
