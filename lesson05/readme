@@ -260,3 +260,123 @@
 		$tasks = auth()->user()->tasks()->with('tags')->latest()->get();
 
 
+
+Инструмент для разработчика Telescope
+	Подробнее https://laravel.com/docs/8.x/telescope
+
+	Возможно понадобится установить библиотеку sudo apt install php-bcmath
+
+	В TelescopeServiceProvider в методе gate определяется правило использования телескопа, например:
+		return $user->id == 1;
+
+	Пока нажата кнопка play, telescope будет собирать информацию
+	
+	Если в контроллере методе index добавим dump($tasks); то в телескопе в закладке Dump можно увидеть вывод.
+
+
+Отправка почтовых сообщений
+
+	Пример 1, в методе store после создания задачи добавляем команду создания почтового отправления
+
+		\Mail::to('user@email')->send(		// если использовать метод send то отправка идет синхронно, чтобы ипользовать очередь надо использовать queue()
+			new TaskCreated($task); // объект класса Mail
+		);
+
+	Чтобы создать объект класса Mail надо
+
+		php artisan make:mail TaskCreated ИЛИ php artisan make:mail TaskCreated -m 'mail.task-created' здесь создастся сразу view представление
+
+		В папке mail создается класс TaskCreated создается класс с методом build в котором ссылка на представление view:
+
+			return $this->markdown('mail.task-created');
+
+		А сам почтовый шаблон mail.task-created мы можем изменять.
+
+		ВАЖНО в файле .env нужно указать MAIL_DRIVER = log, что бы отслежывать данные при разработке
+
+ 		в TaskCreated добавляем конструктор принимающий $task:
+
+			public function __constructor(Task $task)
+				{ $this->task = $task;}
+
+			при этом нужно определить public $task; потому что все публичные свойства класса Mail становятся автоматически
+			доступными внутри его шаблона!
+	
+		Чтобы протестировать реальную отправку почты можно воспользоваться сервисом mailtrap.io и настроить конфигурацию в .env
+
+	Выносим отправку почтовых уведомлений из контроллера
+
+		Один из вариантов перенести этот код в "События в модели"
+
+		Подробнее о событиях в модели https://laravel.com/docs/8.x/eloquent#events
+		
+		Чтобы добавить обработчик событий в модель используем модель Task
+		
+		в нем переопределяем метод boot:
+
+			protected static function boot() 
+			{
+				parent::boot();
+				
+				static::created(function($task) {
+					// так создается наш код к событию модели created
+					// сюда переносим отправку уведомления
+					\Mail::to('user@email')->send(
+						new TaskCreated($task); 
+					);
+				});
+			}
+
+
+Система событий: Наблюдатель - Слушатель
+
+	2 Способ отправки уведомления это создание полноценого события
+
+		Создание события php artisan make:event TaskCreated
+
+		Создается в папке Event класс события TaskCreated, всё что связано с ВебСокетами можно убрать для упрощения
+
+		В нем осталя только конструктор. Делаем в классе публичное свойство $task и через конструктор его заполняем.
+
+		Чтобы воспользоваться событием в Контроллере добавляем команду вызова события
+		
+			event(new TaskCreated($task)); // здесь TaskCreated это название события event
+
+		Но чтобы событие реализовалось нужно добавить СЛУШАТЕЛЯ
+		
+			php artisan make:listener SendTaskCreatedNotification --event='TaskCreated' // связываем его с событием
+
+				слушателя надо называть так чтоб было понятно что он делает
+
+		В слушателя добавим код из метода boot модели Task написаный выше а из модели его уберём
+
+			public function handle(TaskCreated $event)
+			{
+				\Mail::to('user@email')->send(
+					new \App\Mail\TaskCreated($event->task); 
+				);
+			}
+
+		Также нужно зарегистрировать связь Наблюдателя со Слушателем в EventServiceProvider
+
+			    protected $listen = [
+        			Registered::class => [
+		            	SendEmailVerificationNotification::class,
+        			],
+					TaskCreated::class => [
+						SendTaskCreatedNotification::class,
+					],
+			    ];
+
+	Вместо использования контроллера можно использовать систему событий в Моделях
+
+		Для этого убираем из контроллера event а в модель добавляем
+
+			protected $dispatchesEvent = [
+				'created' => TaskCreated::class, // ключ - название события в модели, а значением - событие event
+			];
+
+Уведомления - Notification 
+
+	
+
