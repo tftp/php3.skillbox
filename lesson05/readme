@@ -378,5 +378,78 @@
 
 Уведомления - Notification 
 
+	Создание уведомления: php artisan make:notification TaskStepComplited // название уведомления должно отвечать его смыслу
+
+	Создается класс в котором в методе via указываются каналы, которым отправляется уведомление, по умолчанию на почту,
+	при этом почтовое уведомление будет сформировано по методу toMail.
+
+	Остальные методы определяют способ отправки уведомлений.
+
+	В классе User появился трейт use Notifiable, который позволяет использовать метод notify():
+
+		$user->notify(new TaskStepComplited);
+
+		В качестве параметра указывается уведомление, которое нужно отправить пользователю.
+
+	Если мы хотим отправить уведомление не только на mail  но и database то в метод via добавляем:
+
+		return ['mail', 'database'];
+
+		Для этого ещё нужно создать таблицу в БД для сохранения уведомлений командой
+
+			php artisan notifications:table
+
+			php artisan migrate
+
+		Также надо создать метод toDatabase или toArray
+
+	Пользователь имеет автоматически связь $user->notifications со всеми уведомлениями для пользователя
+
+	Что бы сделать уведомление прочитаным $user->notifications->first()->markAsRead()
+
+	Или непрочитаным $user->notifications->first()->markAsUnread()
 	
+	Список прочитанных уведомлений 	$user->readNotifications
+
+	Список непрочитанных уведомлений 	$user->unreadNotifications
+
+
+Сессии
+
+	Положить что то в сессию session(['name' => ''test']);
+
+	Достать из сессии session(['name']); или session()->get('name'); или session()->get('name', 'defaultValue');
+
+	Удаление данных из сессии session()->forget('name');
+
+	Проверка ключа session()->has('name');
+
+	Можно достать сессию из запроса $request->session()->all();
+
+	Специальный метод сохраняет данные сессии на один следующий страничный переход: 
+	
+		session()->flash('message', 'Задача успешно создана');
+
+	Пример создания функции flash:
+
+		function flash($message, $type = 'success') {
+			session()->flash('message', $message);
+			session()->flash('type', $type);
+		}
+
+	В директории app создаем файл helpers.php, в него помещаем нашу функцию:
+
+		if (! function_exists('flash')) {
+			function flash($message, $type = 'success') {
+				session()->flash('message', $message);
+				session()->flash('type', $type);
+			}
+		}
+	
+	Чтобы подключить файл в composer.json добавим в автоподгрузку
+
+		"files": ["app/helpers.php"]
+
+		но незабываем выполнить команду composer dump-autoload
+
 
