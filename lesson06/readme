@@ -2,6 +2,9 @@
 
 Шаблонизатор Blade https://laravel.su/docs/8.x/blade
 
+	Авторизация действий с помощью политик через шаблоны Blade  https://laravel.su/docs/8.x/authorization#via-blade-templates
+
+
 Заполнение БД тестовыми данными и Фабрики:
 	
 	Наполнители https://laravel.su/docs/8.x/seeding
