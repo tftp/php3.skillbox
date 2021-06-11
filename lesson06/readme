@@ -1,0 +1,24 @@
+Коллекции  https://laravel.su/docs/8.x/collections
+
+Шаблонизатор Blade https://laravel.su/docs/8.x/blade
+
+Заполнение БД тестовыми данными и Фабрики:
+	
+	Наполнители https://laravel.su/docs/8.x/seeding
+
+	Фабрики https://laravel.su/docs/8.x/database-testing#defining-model-factories
+
+	Faker	https://fakerphp.github.io/
+
+
+Основы автотестирования 
+
+	HTTP тесты https://laravel.su/docs/8.x/http-tests
+
+	Консольные тесты https://laravel.su/docs/8.x/console-tests
+
+	Браузерные тесты https://laravel.su/docs/8.x/dusk
+
+Взаимодействие с чужими API через http-клиент Guzzle https://docs.guzzlephp.org/en/stable/
+
+
