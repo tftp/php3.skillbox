@@ -1,0 +1,217 @@
+Eloquent ORM
+	Чтобы переопределить свойства по умолчанию, нужно в модели переопределить свойство attributes, например:
+		protected $attributes = [
+			'completed' => true,
+		];
+
+	Выборка модели из БД.
+
+		Task::all() - выборка всех экземпляров
+
+		Task::get(['id', 'title']); //можно вывести конкретные поля
+
+		Task::first() //вернет первый элемент
+
+		Task::find(1) // поиск по первичному ключу
+
+		Task::find(collect([1,2,5]); //может принимать коллекцию и вернет коллекцию
+
+		Task::chunk(200, function($task) {})) //выборка элементов из БД по 200 шт. и обработка их в колбэк функции
+
+		foreach(Task::where('completed', true)->cursor() as $task) {} //метод cursor берет из БД по одному элементу
+
+		Task::findOrFail(1) //если не найдено то выдает ошибку 404
+
+		Task::count() //подсчет элементов
+
+		Если есть связь то можно обращаться используя эту связь:
+
+			User::first()->task()->new()->get() //получим новые задачи первого пользователя
+
+		Можно создать связь таким образом:
+
+			public function tasksNew()
+			{
+				return $this->hasMany(Task::class)->new(); //т.е. при обращении User::first->tasksNew получим новые задачи
+			}
+
+		Выбрать пользователей у которых есть задача:
+
+			User::has('tasks')->get();
+
+			User::has('tasks', '>', 2)->get();
+
+			User::has('tasks.steps')->get(); // есть пользователи с задачами у которых есть шаги
+
+			User::whereHas('tasks', function ($query) {
+				$query->where('type', 'old');
+			}, '>', 1)->get();
+
+			Методы антиподы whereDoesntHave и doesntHave.
+
+			User::withCount('tasks')->with('tasks')->get() // выведет пользователей с подсчетов количества задач в поле tasks_count
+
+			или
+
+			User::withCount(['tasks' => function ($query) {$query->new();}])->with('tasks')->get();
+
+			или
+
+			User::withCount(['tasks as all_tasks_count', 'tasks' => function ($query) {$query->new();}])->with('tasks')->get();
+
+		Метод with принимает не только строку но и массив, т.е. можно прицепить несколько моделей:
+
+			with(['task:id,title,user_id']) //можно указать и поля
+
+			with(['task'=>function ($query){ $query->select(['id','title'])->new()}]) //можно и колбэк функцию
+
+		Метод load используется как и with, когда нельзя использовать with.
+
+		Eсли у нас есть компания и у неё ещё нет пользователя то обращение Company::first()->user вернет null.
+			Чтобы этого избежать можно в описании связи модели написать:
+
+			return $this->hasOne(Company::class)->withDefault(['name' => 'Нет компании'])
+
+		Про отношения многие ко многим https://laravel.su/docs/8.x/eloquent-relationships#updating-many-to-many-relationships
+
+		Про временные метки родителя https://laravel.su/docs/8.x/eloquent-relationships#touching-parent-timestamps
+
+		Также есть методы для нахождения min и max
+
+		Пример массового обновления:
+
+			Task::where('completed', false)->update(['completed'=>true]); //но при этом объекты Eloquent не обновляются, это надо помнить!
+
+		Task::firstOrCreate(['title'=>'New title']); //ищет элемент или создает если не найден
+
+		похожая команда firstOrNew - возвращает новую модель без сохранения в БД
+
+		похожая команда updateOrCreate
+
+		Удаление:
+
+			Task::find(1)->delete()
+
+			Task::destroy(1) // удаление по первичному ключу
+
+			Task::destroy([1,2]);
+
+			Task::where('id','1')->delete() //это тоже команда QBuilder значит события связаные с Eloquent не обновляются
+
+		Мягкое удаление:
+
+			нужно добавить в миграцию поле deleted_at для этого добавить $table->softDeletes();
+
+			подключить в модель трейт use SoftDeletes;
+
+			теперь когда удаляем элементы они не удаляются, а помечаются как удаленные
+
+			чтобы выбрать все модели даже удаленные 
+				Task::withTrashed()->get();
+
+				Task::onlyTrashed()->get() //только удаленные
+
+				Task::onlyTrashed()->restore() //восстановление удаленных элементов
+
+		Скоупы
+
+			добавляются в модель:
+				public function scopeOfType($query, $type)
+				{
+					return $query->where('type', $type);
+				}
+
+				public function scopeNew($query)
+				{
+					return $query->where('type', 'new');
+				}
+
+				Используем скоуп:
+
+					Task::new()->get();
+
+					Task::ofType('old')->get();
+
+		Глобальные Скоупы
+
+			Для этого надо переопределить метод boot:
+
+				protected static function boot()
+				{
+					parent::boot();
+					static::addGlobalScope(прнимает класс в котором логика скоупа);
+					или
+					static::addGlobalScope('onlyNew', function (Builder $builder) {
+						$builder->where('type','new');	
+					});
+				}
+				Теперь этот глобальный скоуп будет применен к нашей модели задач ВСЕГДА!
+
+				Task::withoutGlobalScope('onlyNew')->get() // отключает глобальный скоуп
+		
+				Task::withoutGlobalScopes()->get() // отключает все глобальные скоупы
+		
+		Акцессоры и Мутаторы - позволяют читать и изменять аттрибуты при их чтении или записи
+
+			public function getTypeAttribute($value) //здесь Type - это название поля в модели //Акцессор
+			{
+				return ucfirst($value) //первый символ Заглавный
+			}
+			
+			теперь при выводе этого аттрибута он будет выводится с Заглавным символом
+
+			Добавление в модель вычисляемых полей:
+
+				public function getDoubleTypeAttribute()
+				{
+					return str_repeat($this->type, 2);
+				}
+			Чтобы добавить поля при выводе переопределяем свойство appends
+
+				protected $appends = [
+					'double_types'
+				];
+
+			public function setTypeAttribute($value) //Мутатор - автоматически конвертирует значение поля при вводе данных в него.
+			{
+				return $this->attributes['type'] = ucfirst(strtolower($value));
+			}
+
+		Про объект Carbone и casts (boolean объекты) см. с 39 минуты.
+
+		Метод casts помогает преобразовать типы полей на лету:
+		
+				protected casts()
+				{
+					'option' => 'array', //в данном случае не надо массив преобразовывать в формат json и обратно, это произойдет автом.
+					'completed' => 'boolean',
+					'viewed_at' => 'datetime:Y-m-d' //автоматически преобразует поле в нужный дата формат
+				}
+				НО будет видно когда мы преобразовываем к массиву $task->toArray()
+
+		Преобразование к массиву и json:
+
+			Task::toAray();
+
+			Task::toJson();
+
+		С помощью свойства hidden можно скрывать поля  при их выводе. Или сделать отображаемыми с помощью visible.
+
+		Также есть методы makeVisible или makeHiden для коллекций.
+
+		Пример добавления поля is_admin:
+
+			protected $appends = ['is_admin'];
+
+			public function getIsAdminAttribute()
+			{
+				return (bool)rand(1,0);
+			}
+
+		Можно также добавлять поля налету:
+
+			Task::all->each->appends(['is_manager']); //добавить поле is_manager
+
+			Task::all->each->setAppends(['is_manager']); // полностью переопределяем appends
+
+
