@@ -1,0 +1,205 @@
+Очереди в Laravel и Работы — jobs
+
+	config/queue.php - содержит настройки очередей, см. https://laravel.su/docs/8.x/queues
+	
+	Чтобы использовать драйвер очереди database, вам понадобится таблица базы данных для хранения заданий. 
+	Чтобы сгенерировать миграцию, которая создает эту таблицу, запустите команду queue:table Artisan. 
+	После того, как миграция будет создана, вы можете выполнить ее миграцию с помощью команды migrate.
+
+	Далее незабыть в .env указать QUEUE_CONNECTION=database
+
+	Чтобы сгенерировать новое задание, используйте команду make:job Artisan. 
+	Эта команда поместит новый класс задания в каталог app/Jobs вашего приложения. Если этот каталог не существует в вашем приложении, 
+	то Laravel предварительно создаст его:
+
+		php artisan make:job CompletedTaskReport
+
+	Сгенерированный класс будет реализовывать интерфейс Illuminate\Contracts\Queue\ShouldQueue, указывая Laravel, 
+	что задание должно быть поставлено в очередь для асинхронного выполнения. см. https://laravel.su/docs/8.x/queues#class-structure
+
+	Классы заданий очень простые, обычно они содержат только метод handle, который вызывается, когда задание обрабатывается очередью.
+	
+		public function handle()
+		{
+			$taskCount = Task::completed()->count();
+			
+			echo "Выполнено задач $taskCount";
+			//или так Log::info("Выполнено задач $taskCount");  вывод будет осуществляться в лог в телескопе будет видно
+		}
+
+	Для запуска задания нужно выполнить \App\Jobs\CompletedTaskReport::dispatch()
+
+	Далее, чтобы выполнилась работа нужно запустить обработчик (работа будет отложена в очередь) или dispatchNow(работа выполнится сразу)
+
+	В метод dispatch можно передавать любые аргументы, которые будут переданы в конструктор нашего класса 
+	см. https://laravel.su/docs/8.x/queues#dispatching-jobs
+
+		Например dispatch(User::first());
+
+		А в конструкторе класса принимаем параметр:
+
+			public function __construct(User $user=null)
+
+	Как выполнять задачи, которые висят в очереди: нужно запустить обработчик 
+
+		php artisan queue:work
+
+		php artisan queue:work database --queue=reports,default //явно указываем соединение и очереди
+
+		php artisan queue:work --tries=3 //попытка выполнить задание 3 раза
+			также это свойство можно переопределить в самой задаче CompletedTaskReport 
+			public $tries = 5;
+			также есть метод retryUntil который задает время ограничения выполнения задания тоже что и опция --timeout=30 
+				php artisan queue:work --timeout=30 //это тоже можно переопределить в нашей работе
+
+		php artisan queue:restart
+
+		и другие см. https://laravel.su/docs/8.x/queues#running-the-queue-worker
+
+	Для запуска команды обработчика в бэкграунде есть специальный инструмент supervisor.
+
+	Работы можно откладывать: \App\Jobs\CompletedTaskReport::dispatch()->delay(now()->addSecond(10))
+
+	Можно указать соединение или очередь:
+		\App\Jobs\CompletedTaskReport::dispatch()->onConnection('sync')->onQueue('reports')
+
+	Разбор неудачных заданий см. https://laravel.su/docs/8.x/queues#dealing-with-failed-jobs
+
+	Пример метода обработки ошибок:
+
+		public function failed(\Exception $exception)
+		{
+		    \Log::error($exception->getMessage());
+		}
+
+	также для обработки ошибок можно использовать сервис-провайдер см. https://laravel.su/docs/8.x/queues#failed-job-events
+
+	При внедрении модели Eloquent в задание, модель автоматически сериализуется перед помещением в очередь и повторно извлекается
+		из базы данных при обработке задания. Однако, если модель была удалена в то время, когда задание ожидало обработки, 
+		ваше задание может завершиться ошибкой с ModelNotFoundException см. https://laravel.su/docs/8.x/queues#ignoring-missing-models
+
+
+Менеджер процессов Supervisord(https://laravel.su/docs/8.x/queues#supervisor-configuration)
+	
+	Добавим в /etc/supervisor/supervisor.conf следующие строки:
+		[inet_http_server]
+		port=skillbox.laravel:9001
+		username=admin
+		password=password
+
+	Можно управлять супревизором и через консоль командой supervisorctl help //посмотреть команды
+
+	supervisorctl update //обновить все процессы
+
+	supervisorctl fg //перевести процесс в форграунд из бэкграунда
+
+	supervisorctl reread //перечитать конфигурацию
+
+	supervisorctl status //покажет статус процесса
+
+	supervisorctl gname:* //указали группу процессов gname
+
+	supervisorctl all // все процессы
+
+	supervisorctl restart //перезапускает указаные процессы
+
+	supervisorctl start //запускает процесс
+
+	Чтобы добавить процесс в супервизор есть папка /etc/supervisor/conf.d
+		в ней создаем файл с именем например laravel-worker.conf
+			
+		внутри надо добавить конфигурацию, например:
+
+		[program:laravel-worker]   //program - группа, laravel-worker - название процесса
+		process_name=%(program_name)s_%(process_num)02d
+		command=php /www/skillbox.laravel/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+		autostart=true
+		autorestart=true
+		stopasgroup=true
+		killasgroup=true
+		user=forge		//пользователь под которым запускается процесс
+		numprocs=8 		//количество процессов которые будут запущены, если их мало можно убрать параметр
+		redirect_stderr=true
+		stdout_logfile=/www/skillbox.laravel/storage/logs/laravel-worker.log //лог файла
+		stopwaitsecs=3600
+	
+	Обычно для перезапуска новой конфигурации или измененной используется следующая последовательность команд:
+		supervisorctl reread
+		supervisorctl update
+		supervisorctl start all//или restart
+
+	Пример добавления ещё одной конфигурации:
+		[program:laravel-worker-reports]   //program - группа, laravel-worker - название процесса
+		command=php /www/skillbox.laravel/artisan queue:work --queue=reports --sleep=3 --tries=3 --max-time=3600
+		autostart=true
+		autorestart=true
+		stopasgroup=true
+		killasgroup=true
+		user=forge		//пользователь под которым запускается процесс
+		redirect_stderr=true
+		stdout_logfile=/www/skillbox.laravel/storage/logs/laravel-worker-reports.log //лог файла
+		stopwaitsecs=3600
+
+
+Установка Redis
+	
+	sudo apt policy redis-server
+	sudo apt install redis-server
+
+	проверяем что он запустился
+
+	для проверки запустим команду redis-cli и введем команду ping получим ответ PONG
+
+	Далее добавляем зависимость в composer:
+
+		composer require predis/predis
+
+	Далее для использования redis в laravel изменим .env QUEUE_CONNECTION=redis
+
+	Далее не забыть перезапустить очереди 
+		php artisan queue:restart
+
+
+Инструмент мониторинга laravel/horizon (https://laravel.su/docs/8.x/horizon)
+
+	Установка composer require laravel/horizon
+
+	Настроить и установить в проекте php artisan horizon:install
+
+	Добавилась конфигурация и сервис-провайдер.
+
+	Можно добавить ограничение доступа как в телескопе в gate:
+
+        Gate::define('viewTelescope', function ($user) {
+            return in_array($user->email, [
+                'admin@local.ru'
+            ]);
+        });
+
+	Чтобы horizon работал его запускают php artisan horizon
+
+	Чтобы перенести в супервайзер надо:
+
+		Добавить в конфигурацию например в laravel-worker.conf
+
+		[program:horizon]   
+		command=php /www/skillbox.laravel/artisan horizon
+		autostart=true
+		autorestart=true
+		stopasgroup=true
+		killasgroup=true
+		user=forge		
+		redirect_stderr=true
+		stdout_logfile=/www/skillbox.laravel/storage/logs/horizon.log
+		stopwaitsecs=3600
+
+	Чтобы зайти в интерфейс: skillbox.laravel/horizon
+
+	В конфигурации config/horizon.php настраиваем параметр local..queue=['default', 'reports'] //указываем очереди за которыми надо следить
+
+	Управление Тэгами https://laravel.su/docs/8.x/horizon#tags
+
+	Управление метрикой: (https://laravel.su/docs/8.x/horizon#metrics) возможно потребуется запустить php artisan horizon:snapshot
+
+
+
