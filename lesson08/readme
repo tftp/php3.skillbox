@@ -87,6 +87,8 @@
 		username=admin
 		password=password
 
+	Для обращения к супервизору пишем в браузере skillbox.laravel:9001
+
 	Можно управлять супревизором и через консоль командой supervisorctl help //посмотреть команды
 
 	supervisorctl update //обновить все процессы
