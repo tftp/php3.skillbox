@@ -95,6 +95,8 @@ sudo mysql #попадаем в mysql
 
 далее редактируем конфиг nginx:
 	/etc/nginx/sites-available/default
+пример создания ссылки:
+	sudo ln -s /etc/nginx/sites-available/any.site /etc/nginx/sites-enabled/any.site
 обращаем внимание на сокет и нашу дерикторию проекта
 	fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
 	root /var/www/example-app/public;
